@@ -1,0 +1,26 @@
+[
+  {
+    "id": "faq-001",
+    "category": "Réparation",
+    "question": "Combien de temps prend une réparation d'écran iPhone ?",
+    "answer": "Une réparation d'écran iPhone prend généralement entre 30 minutes et 2 heures selon le modèle. Nous vous donnons une estimation précise lors du diagnostic."
+  },
+  {
+    "id": "faq-002", 
+    "category": "Garantie",
+    "question": "Quelle garantie offrez-vous sur vos réparations ?",
+    "answer": "Nous offrons une garantie de 12 mois sur toutes nos réparations et pièces détachées. Cette garantie couvre les défauts de fabrication et de montage."
+  },
+  {
+    "id": "faq-003",
+    "category": "Prix",
+    "question": "Puis-je avoir un devis avant la réparation ?",
+    "answer": "Oui, nous proposons un diagnostic gratuit et un devis détaillé avant toute réparation. Vous n'êtes pas engagé si vous refusez le devis."
+  },
+  {
+    "id": "faq-004",
+    "category": "Pièces",
+    "question": "Utilisez-vous des pièces d'origine Apple ?",
+    "answer": "Nous utilisons des pièces de qualité OEM (Original Equipment Manufacturer) qui répondent aux mêmes standards que les pièces d'origine Apple."
+  }
+]

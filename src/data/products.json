@@ -1,0 +1,91 @@
+[
+  {
+    "id": "ecran-iphone-15-pro",
+    "name": "Écran iPhone 15 Pro - OEM",
+    "slug": "ecran-iphone-15-pro-oem",
+    "category": "ecrans",
+    "brand": "Apple Compatible",
+    "description": "Écran LCD haute qualité pour iPhone 15 Pro, qualité OEM avec garantie 12 mois",
+    "images": [
+      "/placeholder.svg?height=400&width=400",
+      "/placeholder.svg?height=400&width=400&text=Vue2",
+      "/placeholder.svg?height=400&width=400&text=Vue3"
+    ],
+    "price": 189.99,
+    "originalPrice": 229.99,
+    "currency": "EUR",
+    "stock": 25,
+    "rating": 4.8,
+    "reviewCount": 124,
+    "compatibility": ["iPhone 15 Pro"],
+    "attributes": {
+      "quality": "OEM",
+      "warranty": "12 mois",
+      "color": "Noir",
+      "includes": ["Écran", "Outils", "Adhésifs"]
+    },
+    "variants": [
+      { "id": "noir", "name": "Noir", "price": 189.99, "stock": 25 },
+      { "id": "blanc", "name": "Blanc", "price": 189.99, "stock": 18 }
+    ],
+    "tags": ["bestseller", "oem", "garantie-12m"],
+    "seo": {
+      "title": "Écran iPhone 15 Pro OEM - Réparation iPhone",
+      "description": "Écran de remplacement iPhone 15 Pro qualité OEM. Garantie 12 mois, outils inclus. Livraison rapide.",
+      "keywords": ["écran iPhone 15 Pro", "réparation iPhone", "pièce détachée"]
+    }
+  },
+  {
+    "id": "batterie-iphone-14",
+    "name": "Batterie iPhone 14 - 3279mAh",
+    "slug": "batterie-iphone-14-3279mah",
+    "category": "batteries",
+    "brand": "Apple Compatible",
+    "description": "Batterie de remplacement pour iPhone 14, capacité 3279mAh",
+    "images": ["/placeholder.svg?height=400&width=400&text=Batterie"],
+    "price": 45.99,
+    "currency": "EUR",
+    "stock": 50,
+    "rating": 4.9,
+    "reviewCount": 89,
+    "compatibility": ["iPhone 14"],
+    "attributes": {
+      "capacity": "3279mAh",
+      "warranty": "6 mois",
+      "type": "Li-ion",
+      "includes": ["Batterie", "Outils", "Adhésifs"]
+    },
+    "tags": ["bestseller"],
+    "seo": {
+      "title": "Batterie iPhone 14 3279mAh - Pièce détachée",
+      "description": "Batterie de remplacement iPhone 14. Capacité 3279mAh, garantie 6 mois.",
+      "keywords": ["batterie iPhone 14", "3279mAh", "réparation"]
+    }
+  },
+  {
+    "id": "connecteur-iphone-13",
+    "name": "Connecteur Lightning iPhone 13",
+    "slug": "connecteur-lightning-iphone-13",
+    "category": "connecteurs", 
+    "brand": "Apple Compatible",
+    "description": "Module connecteur Lightning pour iPhone 13",
+    "images": ["/placeholder.svg?height=400&width=400&text=Connecteur"],
+    "price": 29.99,
+    "currency": "EUR",
+    "stock": 35,
+    "rating": 4.7,
+    "reviewCount": 45,
+    "compatibility": ["iPhone 13"],
+    "attributes": {
+      "type": "Lightning",
+      "warranty": "6 mois",
+      "includes": ["Module", "Outils"]
+    },
+    "tags": [],
+    "seo": {
+      "title": "Connecteur Lightning iPhone 13 - Pièce détachée",
+      "description": "Module connecteur de charge Lightning iPhone 13. Garantie 6 mois.",
+      "keywords": ["connecteur iPhone 13", "Lightning", "charge"]
+    }
+  }
+]
