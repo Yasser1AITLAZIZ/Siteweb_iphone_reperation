@@ -1,174 +1,151 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { motion, useScroll, useTransform, useSpring, useInView } from 'framer-motion'
+import React, { ReactNode } from 'react'
+import { motion, useScroll, useTransform, useSpring } from 'framer-motion'
 
-// Parallax Hero Section
-export const ParallaxHero: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const ref = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"]
-  })
+// Parallax Hero Component
+interface ParallaxHeroProps {
+  children: ReactNode
+  className?: string
+}
 
-  const y = useTransform(scrollYProgress, [0, 1], ["0%", "50%"])
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
+export function ParallaxHero({ children, className = '' }: ParallaxHeroProps) {
+  const { scrollY } = useScroll()
+  const y = useTransform(scrollY, [0, 500], [0, -150])
+  const opacity = useTransform(scrollY, [0, 300], [1, 0.8])
 
   return (
     <motion.div
-      ref={ref}
+      className={`relative ${className}`}
       style={{ y, opacity }}
-      className="relative"
     >
       {children}
     </motion.div>
   )
 }
 
-// Sticky Section avec effet de parallaxe
-export const StickySection: React.FC<{ 
-  children: React.ReactNode
-  className?: string
-}> = ({ children, className = "" }) => {
-  const ref = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"]
-  })
-
-  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [0.8, 1, 0.8])
-  const opacity = useTransform(scrollYProgress, [0, 0.5, 1], [0, 1, 0])
-
-  return (
-    <motion.div
-      ref={ref}
-      style={{ scale, opacity }}
-      className={`sticky top-0 ${className}`}
-    >
-      {children}
-    </motion.div>
-  )
-}
-
-// Text Reveal Animation
-export const TextReveal: React.FC<{ 
-  children: React.ReactNode
-  className?: string
+// Text Reveal Component
+interface TextRevealProps {
+  children: ReactNode
   delay?: number
-}> = ({ children, className = "", delay = 0 }) => {
-  const ref = useRef<HTMLDivElement>(null)
-  const isInView = useInView(ref, { once: true, margin: "-100px" })
+  className?: string
+}
 
+export function TextReveal({ children, delay = 0, className = '' }: TextRevealProps) {
   return (
     <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 100 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 100 }}
-      transition={{ 
-        duration: 0.8, 
-        delay,
-        ease: [0.25, 0.46, 0.45, 0.94]
-      }}
       className={className}
+      initial={{ opacity: 0, y: 50 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.8, delay, ease: "easeOut" }}
     >
       {children}
     </motion.div>
   )
 }
 
-// Floating Elements Animation
-export const FloatingElement: React.FC<{ 
-  children: React.ReactNode
-  className?: string
+// Floating Element Component
+interface FloatingElementProps {
+  children: ReactNode
   delay?: number
-}> = ({ children, className = "", delay = 0 }) => {
+  className?: string
+}
+
+export function FloatingElement({ children, delay = 0, className = '' }: FloatingElementProps) {
   return (
     <motion.div
-      initial={{ y: 20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ 
-        duration: 1, 
-        delay,
-        ease: "easeOut"
-      }}
-      whileHover={{ 
-        y: -10,
-        transition: { duration: 0.3 }
-      }}
       className={className}
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay, ease: "easeOut" }}
+      whileHover={{ y: -5 }}
     >
       {children}
     </motion.div>
   )
 }
 
-// Gradient Text Animation
-export const GradientText: React.FC<{ 
-  children: React.ReactNode
+// Gradient Text Component
+interface GradientTextProps {
+  children: ReactNode
   className?: string
-}> = ({ children, className = "" }) => {
+}
+
+export function GradientText({ children, className = '' }: GradientTextProps) {
   return (
-    <motion.span
-      className={`bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent ${className}`}
-      initial={{ backgroundPosition: "0% 50%" }}
-      animate={{ backgroundPosition: "100% 50%" }}
-      transition={{ 
-        duration: 3, 
-        repeat: Infinity, 
-        repeatType: "reverse",
-        ease: "linear"
-      }}
-      style={{
-        backgroundSize: "200% 200%"
-      }}
-    >
+    <span className={`bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent ${className}`}>
       {children}
-    </motion.span>
+    </span>
   )
 }
 
-// Magnetic Button Effect
-export const MagneticButton: React.FC<{ 
-  children: React.ReactNode
+// Magnetic Button Component
+interface MagneticButtonProps {
+  children: ReactNode
   className?: string
-  onClick?: () => void
-}> = ({ children, className = "", onClick }) => {
-  const ref = useRef<HTMLButtonElement>(null)
-  const [position, setPosition] = useState({ x: 0, y: 0 })
+}
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!ref.current) return
-    
-    const rect = ref.current.getBoundingClientRect()
-    const x = e.clientX - rect.left - rect.width / 2
-    const y = e.clientY - rect.top - rect.height / 2
-    
-    setPosition({ x, y })
-  }
-
-  const handleMouseLeave = () => {
-    setPosition({ x: 0, y: 0 })
-  }
-
-  const x = useSpring(position.x, { stiffness: 150, damping: 15 })
-  const y = useSpring(position.y, { stiffness: 150, damping: 15 })
-
+export function MagneticButton({ children, className = '' }: MagneticButtonProps) {
   return (
-    <motion.button
-      ref={ref}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      onClick={onClick}
-      style={{ x, y }}
+    <motion.div
+      className={className}
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      className={className}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
     >
       {children}
-    </motion.button>
+    </motion.div>
   )
 }
 
-// Scroll Progress Indicator
-export const ScrollProgress: React.FC = () => {
+// 3D Card Component
+interface Card3DProps {
+  children: ReactNode
+  className?: string
+}
+
+export function Card3D({ children, className = '' }: Card3DProps) {
+  return (
+    <motion.div
+      className={className}
+      whileHover={{ 
+        rotateY: 5,
+        rotateX: 5,
+        scale: 1.02
+      }}
+      transition={{ duration: 0.3 }}
+      style={{ transformStyle: "preserve-3d" }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+// Morphing Background Component
+interface MorphingBackgroundProps {
+  children: ReactNode
+  className?: string
+}
+
+export function MorphingBackground({ children, className = '' }: MorphingBackgroundProps) {
+  return (
+    <motion.div
+      className={`relative overflow-hidden ${className}`}
+      animate={{
+        background: [
+          "linear-gradient(45deg, #667eea 0%, #764ba2 100%)",
+          "linear-gradient(45deg, #f093fb 0%, #f5576c 100%)",
+          "linear-gradient(45deg, #4facfe 0%, #00f2fe 100%)",
+          "linear-gradient(45deg, #667eea 0%, #764ba2 100%)"
+        ]
+      }}
+      transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
+// Scroll Progress Component
+export function ScrollProgress() {
   const { scrollYProgress } = useScroll()
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
@@ -178,110 +155,8 @@ export const ScrollProgress: React.FC = () => {
 
   return (
     <motion.div
-      className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-600 to-purple-600 origin-left z-50"
-      style={{ scaleX }}
+      className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-purple-500 z-50"
+      style={{ scaleX, transformOrigin: "0%" }}
     />
-  )
-}
-
-// Card Hover Effect avec 3D
-export const Card3D: React.FC<{ 
-  children: React.ReactNode
-  className?: string
-}> = ({ children, className = "" }) => {
-  const ref = useRef<HTMLDivElement>(null)
-  const [isHovered, setIsHovered] = useState(false)
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!ref.current) return
-    
-    const rect = ref.current.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    
-    const centerX = rect.width / 2
-    const centerY = rect.height / 2
-    
-    const rotateX = (y - centerY) / 10
-    const rotateY = (centerX - x) / 10
-    
-    ref.current.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.05, 1.05, 1.05)`
-  }
-
-  const handleMouseLeave = () => {
-    if (ref.current) {
-      ref.current.style.transform = 'perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)'
-    }
-    setIsHovered(false)
-  }
-
-  return (
-    <motion.div
-      ref={ref}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={handleMouseLeave}
-      initial={{ opacity: 0, y: 50 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-      className={`transition-all duration-300 ${className}`}
-      style={{
-        transformStyle: 'preserve-3d'
-      }}
-    >
-      {children}
-    </motion.div>
-  )
-}
-
-// Infinite Scroll Text
-export const InfiniteScrollText: React.FC<{ 
-  text: string
-  className?: string
-}> = ({ text, className = "" }) => {
-  return (
-    <div className={`overflow-hidden ${className}`}>
-      <motion.div
-        className="whitespace-nowrap"
-        animate={{ x: [0, -50] }}
-        transition={{
-          duration: 20,
-          repeat: Infinity,
-          ease: "linear"
-        }}
-      >
-        <span className="inline-block mr-8">{text}</span>
-        <span className="inline-block mr-8">{text}</span>
-        <span className="inline-block mr-8">{text}</span>
-      </motion.div>
-    </div>
-  )
-}
-
-// Morphing Background
-export const MorphingBackground: React.FC<{ 
-  children: React.ReactNode
-  className?: string
-}> = ({ children, className = "" }) => {
-  const [isHovered, setIsHovered] = useState(false)
-
-  return (
-    <motion.div
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-      className={`relative overflow-hidden ${className}`}
-    >
-      <motion.div
-        className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-100"
-        animate={{
-          scale: isHovered ? 1.1 : 1,
-          rotate: isHovered ? 5 : 0,
-        }}
-        transition={{ duration: 0.6, ease: "easeInOut" }}
-      />
-      <div className="relative z-10">
-        {children}
-      </div>
-    </motion.div>
   )
 }

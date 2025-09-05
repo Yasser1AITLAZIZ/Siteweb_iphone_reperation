@@ -99,17 +99,6 @@ export default function Boutique() {
             </div>
           </FadeInUp>
           
-          {/* Navigation avec animation */}
-          <FadeInUp delay={1.0}>
-            <div className="flex justify-center space-x-4">
-              <Link to="/" className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                ← Retour à l'accueil
-              </Link>
-              <Link to="/reparations" className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                🔧 Réparations
-              </Link>
-            </div>
-          </FadeInUp>
           
         </div>
       </div>

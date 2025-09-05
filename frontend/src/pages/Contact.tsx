@@ -155,19 +155,6 @@ export default function Contact() {
       {/* Navigation */}
       <section className="py-16 bg-black">
         <div className="container mx-auto px-4 text-center">
-          <FadeInUp delay={0.8}>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link to="/" className="px-8 py-4 bg-white text-black rounded-full text-lg font-semibold hover:bg-gray-100 transition-all duration-300">
-                ← Retour à l'accueil
-              </Link>
-              <Link to="/reparations" className="px-8 py-4 border-2 border-white text-white rounded-full text-lg font-semibold hover:bg-white hover:text-black transition-all duration-300">
-                🔧 Réparations
-              </Link>
-              <Link to="/boutique" className="px-8 py-4 border-2 border-white text-white rounded-full text-lg font-semibold hover:bg-white hover:text-black transition-all duration-300">
-                🛍️ Boutique
-              </Link>
-            </div>
-          </FadeInUp>
         </div>
       </section>
     </div>

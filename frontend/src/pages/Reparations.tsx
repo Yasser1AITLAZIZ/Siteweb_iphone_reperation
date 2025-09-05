@@ -55,15 +55,6 @@ export default function Reparations() {
             </FadeInUp>
           </div>
           
-          {/* Navigation avec animation */}
-          <FadeInUp delay={0.8}>
-            <div className="flex justify-center space-x-4">
-              <Link to="/" className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                ← Retour à l'accueil
-              </Link>
-            </div>
-          </FadeInUp>
-          
         </div>
       </div>
     </div>

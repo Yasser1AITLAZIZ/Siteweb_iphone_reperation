@@ -5,6 +5,7 @@ import Header from './components/layout/Header'
 import Footer from './components/layout/Footer'
 import ChatbotWidget from './components/ChatbotWidget'
 import CartWidget from './components/CartWidget'
+import ScrollToTop from './components/ScrollToTop'
 
 // Import des pages
 import Index from './pages/Index'
@@ -21,6 +22,7 @@ const App = () => {
   return (
     <AuthProvider>
       <Router>
+        <ScrollToTop />
         <div className="min-h-screen flex flex-col">
           <Header />
           <main className="flex-1">
