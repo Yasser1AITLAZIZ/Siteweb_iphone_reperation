@@ -1,11 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { User, Session, AuthError } from '@supabase/supabase-js'
+import { supabase } from '../lib/supabase'
 
 // Types
-interface User {
+interface UserProfile {
   id: string
   email: string
   name: string
   phone: string
+  role: 'customer' | 'technician' | 'admin'
+  status: 'active' | 'inactive' | 'suspended'
+  address?: any
+  permissions: string[]
+  preferences: any
 }
 
 interface CartItem {
@@ -18,30 +25,20 @@ interface CartItem {
 }
 
 interface AuthContextType {
-  user: User | null
+  user: UserProfile | null
+  session: Session | null
   cart: CartItem[]
   isAuthenticated: boolean
   isLoading: boolean
   login: (email: string, password: string) => Promise<void>
   signup: (email: string, password: string, name: string, phone: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   addToCart: (item: Omit<CartItem, 'id'>) => void
   removeFromCart: (itemId: string) => void
   updateCartQuantity: (itemId: string, quantity: number) => void
   clearCart: () => void
   getCartTotal: () => number
 }
-
-// Mock data
-const mockUsers = [
-  {
-    id: '1',
-    email: 'demo@irepair-pro.ma',
-    password: 'demo123',
-    name: 'Ahmed Benali',
-    phone: '+212 6 12 34 56 78'
-  }
-]
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
@@ -58,81 +55,169 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<UserProfile | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [cart, setCart] = useState<CartItem[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Load user and cart from localStorage on mount
+  // Load cart from localStorage on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('irepair_user')
     const savedCart = localStorage.getItem('irepair_cart')
-    
-    if (savedUser) {
-      setUser(JSON.parse(savedUser))
-    }
-    
     if (savedCart) {
       setCart(JSON.parse(savedCart))
     }
   }, [])
 
-  // Save user and cart to localStorage when they change
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('irepair_user', JSON.stringify(user))
-    } else {
-      localStorage.removeItem('irepair_user')
-    }
-  }, [user])
-
+  // Save cart to localStorage when it changes
   useEffect(() => {
     localStorage.setItem('irepair_cart', JSON.stringify(cart))
   }, [cart])
 
+  // Listen for auth changes
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session)
+        
+        if (session?.user) {
+          // Get user profile from Supabase
+          try {
+            const { data: profile, error } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', session.user.id)
+              .single()
+
+            if (error) {
+              console.error('Error fetching profile:', error)
+              setUser(null)
+            } else {
+              setUser(profile as UserProfile)
+            }
+          } catch (error) {
+            console.error('Error in auth state change:', error)
+            setUser(null)
+          }
+        } else {
+          setUser(null)
+        }
+        
+        setIsLoading(false)
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [])
+
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    const foundUser = mockUsers.find(u => u.email === email && u.password === password)
-    
-    if (foundUser) {
-      const { password: _, ...userWithoutPassword } = foundUser
-      setUser(userWithoutPassword)
-    } else {
-      throw new Error('Email ou mot de passe incorrect')
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      if (data.user) {
+        // Get user profile
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single()
+
+        if (profileError) {
+          throw new Error('Failed to fetch user profile')
+        }
+
+        setUser(profile as UserProfile)
+        setSession(data.session)
+      }
+    } catch (error) {
+      console.error('Login error:', error)
+      throw error
+    } finally {
+      setIsLoading(false)
     }
-    
-    setIsLoading(false)
   }
 
   const signup = async (email: string, password: string, name: string, phone: string) => {
     setIsLoading(true)
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
-    // Check if user already exists
-    if (mockUsers.find(u => u.email === email)) {
-      throw new Error('Un compte avec cet email existe déjà')
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+            phone
+          }
+        }
+      })
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      if (data.user) {
+        // Create user profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            name,
+            email,
+            phone,
+            role: 'customer',
+            status: 'active',
+            permissions: [],
+            preferences: {}
+          })
+
+        if (profileError) {
+          throw new Error('Failed to create user profile')
+        }
+
+        // Set user profile
+        setUser({
+          id: data.user.id,
+          name,
+          email,
+          phone,
+          role: 'customer',
+          status: 'active',
+          permissions: [],
+          preferences: {}
+        })
+        setSession(data.session)
+      }
+    } catch (error) {
+      console.error('Signup error:', error)
+      throw error
+    } finally {
+      setIsLoading(false)
     }
-    
-    // Create new user
-    const newUser: User = {
-      id: Date.now().toString(),
-      email,
-      name,
-      phone
-    }
-    
-    setUser(newUser)
-    setIsLoading(false)
   }
 
-  const logout = () => {
-    setUser(null)
-    setCart([])
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        throw new Error(error.message)
+      }
+      
+      setUser(null)
+      setSession(null)
+      setCart([])
+    } catch (error) {
+      console.error('Logout error:', error)
+      throw error
+    }
   }
 
   const addToCart = (item: Omit<CartItem, 'id'>) => {
@@ -169,6 +254,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const value: AuthContextType = {
     user,
+    session,
     cart,
     isAuthenticated: !!user,
     isLoading,

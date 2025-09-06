@@ -1,14 +1,14 @@
 # 🍎 iRepair Pro Backend API
 
-> **Backend API pour le service de réparation iPhone avec chatbot RAG et intégration Firebase**
+> **Backend API pour le service de réparation iPhone avec chatbot RAG et intégration Supabase**
 
 ## 🏗️ **Architecture**
 
 ### **Stack Technique**
 - **⚡ FastAPI** - Framework web moderne et rapide
-- **🔥 Firebase** - Authentification et base de données Firestore
-- **🤖 OpenAI** - Intelligence artificielle pour le chatbot
-- **📊 Pinecone** - Base de données vectorielle pour RAG
+- **🗄️ Supabase** - Authentification et base de données PostgreSQL
+- **🤖 Gemini** - Intelligence artificielle pour le chatbot
+- **📊 pgvector** - Extension PostgreSQL pour la recherche vectorielle RAG
 - **🐍 Python 3.11+** - Langage de programmation
 - **📝 Pydantic** - Validation et sérialisation des données
 
@@ -19,7 +19,7 @@ backend/
 │   ├── main.py                 # Point d'entrée FastAPI
 │   ├── core/                   # Configuration et utilitaires
 │   │   ├── config.py          # Configuration de l'application
-│   │   ├── firebase.py        # Configuration Firebase
+│   │   ├── supabase.py        # Configuration Supabase
 │   │   ├── security.py        # Authentification et sécurité
 │   │   └── exceptions.py      # Exceptions personnalisées
 │   ├── models/                 # Modèles Pydantic
@@ -81,22 +81,23 @@ nano .env
 
 ### **4. Variables d'Environnement**
 ```env
-# Firebase
-FIREBASE_PROJECT_ID="irepair-pro"
-FIREBASE_PRIVATE_KEY="AIzaSyClTr6kSVIFtgne_cLjjRQN9MGqZ3Eshpc"
-FIREBASE_CLIENT_EMAIL="yasseraitlaziz@gmail.com"
+# Supabase
+SUPABASE_URL="https://your-project-ref.supabase.co"
+SUPABASE_ANON_KEY="your-supabase-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
 
-# OpenAI
-OPENAI_API_KEY=""
+# Database
+DATABASE_URL="postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres"
 
-# Pinecone
-PINECONE_API_KEY=""
-PINECONE_ENVIRONMENT="us-west1-gcp"
-PINECONE_INDEX_NAME="irepair-knowledge"
+# Gemini
+GEMINI_API_KEY="your-gemini-api-key"
 
 # Application
-SECRET_KEY="your-secret-key"
+SECRET_KEY="your-secret-key-here"
 ENVIRONMENT="development"
+DEBUG=true
+HOST="0.0.0.0"
+PORT=8000
 ```
 
 ---
@@ -166,7 +167,7 @@ python scripts/init_data.py
 
 ## 🔒 **Sécurité**
 
-### **Authentification Firebase**
+### **Authentification Supabase**
 ```python
 # Middleware d'authentification
 from app.core.security import get_current_user
@@ -200,20 +201,18 @@ from app.core.security import rate_limiter
 
 ### **Architecture RAG**
 ```
-User Query → Vector Search → Context Retrieval → LLM Generation → Response
+User Query → pgvector Search → Context Retrieval → Gemini Generation → Response
 ```
 
 ### **Configuration**
 ```python
-# Service RAG
+# Service RAG avec Supabase pgvector et Gemini
 from app.services.rag_service import rag_service
 
 # Requête RAG
 response = await rag_service.query(RAGQuery(
     question="Combien coûte une réparation d'écran?",
-    context={"user_id": "user123"},
-    limit=5,
-    threshold=0.7
+    context={"user_id": "user123"}
 ))
 ```
 
@@ -335,8 +334,9 @@ test: Add unit tests for order service
 ### **Optimisations**
 - **Cache Redis** - Mise en cache des requêtes fréquentes
 - **Pagination** - Limitation des résultats
-- **Index Firestore** - Optimisation des requêtes
+- **Index PostgreSQL** - Optimisation des requêtes avec pgvector
 - **Pool de connexions** - Gestion des connexions DB
+- **RLS Policies** - Sécurité au niveau des lignes
 
 ### **Métriques Cibles**
 - **API Response Time** < 200ms
