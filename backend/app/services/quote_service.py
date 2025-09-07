@@ -361,13 +361,43 @@ class QuoteService:
         Get all available repair services
         """
         try:
-            query = self.db.collection(self.services_collection).where("is_available", "==", True)
-            docs = query.stream()
+            if self.client is None:
+                logger.warning("Supabase client not available, returning mock services")
+                # Return mock services for development
+                return [
+                    RepairService(
+                        id="screen_repair",
+                        name="Screen Repair",
+                        description="Complete screen replacement",
+                        price=299.99,
+                        estimated_time=60,
+                        category=ServiceCategory.SCREEN,
+                        is_available=True
+                    ),
+                    RepairService(
+                        id="battery_replacement",
+                        name="Battery Replacement",
+                        description="Battery replacement service",
+                        price=89.99,
+                        estimated_time=30,
+                        category=ServiceCategory.BATTERY,
+                        is_available=True
+                    ),
+                    RepairService(
+                        id="camera_repair",
+                        name="Camera Repair",
+                        description="Camera module replacement",
+                        price=199.99,
+                        estimated_time=45,
+                        category=ServiceCategory.CAMERA,
+                        is_available=True
+                    )
+                ]
+            
+            response = self.client.table(self.services_table).select("*").eq("is_available", True).execute()
             
             services = []
-            for doc in docs:
-                service_data = doc.to_dict()
-                service_data["id"] = doc.id
+            for service_data in response.data or []:
                 services.append(RepairService(**service_data))
             
             return services

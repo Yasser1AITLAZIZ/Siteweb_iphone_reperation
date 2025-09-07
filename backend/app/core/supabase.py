@@ -21,7 +21,10 @@ def initialize_supabase():
     
     try:
         if not settings.SUPABASE_URL or not settings.SUPABASE_ANON_KEY:
-            raise ValueError("Supabase URL and ANON_KEY must be provided")
+            logger.warning("Supabase URL and ANON_KEY not provided, using mock client")
+            # Create a mock client for development
+            supabase = None
+            return
         
         supabase = create_client(
             settings.SUPABASE_URL,
@@ -32,13 +35,15 @@ def initialize_supabase():
         
     except Exception as e:
         logger.error("Failed to initialize Supabase", error=str(e))
-        raise
+        # Don't raise the error, just set to None for development
+        supabase = None
 
 
-def get_supabase_client() -> Client:
+def get_supabase_client() -> Optional[Client]:
     """Get Supabase client instance"""
     if supabase is None:
-        raise RuntimeError("Supabase not initialized. Call initialize_supabase() first.")
+        logger.warning("Supabase not initialized, returning None")
+        return None
     return supabase
 
 

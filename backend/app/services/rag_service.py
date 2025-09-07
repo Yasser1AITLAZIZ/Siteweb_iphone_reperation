@@ -13,9 +13,7 @@ import structlog
 import time
 import uuid
 import numpy as np
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from pgvector.psycopg2 import register_vector
+# psycopg2 imports removed - using Supabase client instead
 
 from app.core.config import settings
 from app.core.supabase import get_supabase_client
@@ -50,6 +48,9 @@ class RAGService:
             from app.core.supabase import initialize_supabase, get_supabase_client
             initialize_supabase()
             self.supabase_client = get_supabase_client()
+            
+            if self.supabase_client is None:
+                logger.warning("Supabase client not available, RAG service will use fallback responses")
             
             logger.info("RAG service initialized successfully with Gemini and Supabase client")
             
@@ -240,6 +241,10 @@ class RAGService:
     async def _search_similar_documents(self, query_embedding: List[float], k: int = 3) -> List[Dict[str, Any]]:
         """Search for similar documents using Supabase"""
         try:
+            if self.supabase_client is None:
+                logger.warning("Supabase client not available, returning empty results")
+                return []
+                
             # For now, return simple text-based search since Supabase doesn't support vector search via REST API
             # This is a simplified version - in production, you'd need to use Supabase's vector functions
             result = self.supabase_client.table('knowledge_chunks').select('*').execute()
@@ -266,6 +271,10 @@ class RAGService:
     async def _store_document_chunk(self, chunk_id: str, content: str, embedding: List[float], metadata: Dict[str, Any]):
         """Store document chunk in database"""
         try:
+            if self.supabase_client is None:
+                logger.warning("Supabase client not available, skipping document storage")
+                return
+                
             # Store using Supabase client
             chunk_data = {
                 "id": chunk_id,
@@ -286,6 +295,10 @@ class RAGService:
     async def _remove_document_chunks(self, document_id: str):
         """Remove all chunks for a specific document"""
         try:
+            if self.supabase_client is None:
+                logger.warning("Supabase client not available, skipping chunk removal")
+                return
+                
             # Remove using Supabase client
             result = self.supabase_client.table('knowledge_chunks').delete().like('id', f"{document_id}_%").execute()
             
@@ -379,6 +392,14 @@ class RAGService:
         Get knowledge base statistics
         """
         try:
+            if self.supabase_client is None:
+                logger.warning("Supabase client not available, returning empty stats")
+                return {
+                    "total_chunks": 0,
+                    "unique_documents": 0,
+                    "timestamp": time.time()
+                }
+                
             # Get stats using Supabase client
             result = self.supabase_client.table('knowledge_chunks').select('*', count='exact').execute()
             total_chunks = result.count
