@@ -12,7 +12,7 @@ from app.models.chatbot import (
     ChatRequest, ChatResponse, RAGQuery, RAGResponse,
     KnowledgeDocument, ChatSession, ChatHistory
 )
-from app.services.rag_service import rag_service
+from app.services.rag_service import get_rag_service
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -42,19 +42,20 @@ async def chat_with_bot(
         )
         
         # Get RAG response
-        rag_response = await rag_service.query(rag_query)
+        rag_response = await get_rag_service().query(rag_query)
         
         # Build chat response
+        from datetime import datetime
         chat_response = ChatResponse(
             message=rag_response.answer,
             session_id=chat_request.session_id or "default",
-            timestamp=rag_response.metadata.get("timestamp"),
+            timestamp=datetime.now(),
             sources=rag_response.sources,
             confidence=rag_response.confidence,
             metadata={
                 "query_time": rag_response.query_time,
                 "sources_count": len(rag_response.sources),
-                "model": "gpt-4"
+                "model": "gemini-1.5-flash"
             }
         )
         
@@ -68,8 +69,12 @@ async def chat_with_bot(
         logger.warning("Chat request validation failed", error=str(e))
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        logger.error("Unexpected chat error", error=str(e))
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
+        logger.error("Unexpected chat error", error=str(e), exc_info=True)
+        # Return a more specific error for debugging
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
+            detail=f"Internal server error: {str(e)}"
+        )
 
 
 @router.post("/rag/query", response_model=RAGResponse)
@@ -90,7 +95,7 @@ async def rag_query(
         rag_query.context["user_id"] = current_user["uid"]
         
         # Process RAG query
-        response = await rag_service.query(rag_query)
+        response = await get_rag_service().query(rag_query)
         
         logger.info("RAG query processed", confidence=response.confidence)
         return response
@@ -118,7 +123,7 @@ async def add_knowledge_documents(
         
         logger.info("Adding knowledge documents", count=len(documents), user_id=current_user["uid"])
         
-        result = await rag_service.add_documents(documents)
+        result = await get_rag_service().add_documents(documents)
         
         logger.info("Knowledge documents added successfully", result=result)
         return result
@@ -147,7 +152,7 @@ async def update_knowledge_document(
         
         logger.info("Updating knowledge document", document_id=document_id, user_id=current_user["uid"])
         
-        result = await rag_service.update_document(document)
+        result = await get_rag_service().update_document(document)
         
         logger.info("Knowledge document updated successfully", document_id=document_id)
         return result
@@ -175,7 +180,7 @@ async def delete_knowledge_document(
         
         logger.info("Deleting knowledge document", document_id=document_id, user_id=current_user["uid"])
         
-        result = await rag_service.delete_document(document_id)
+        result = await get_rag_service().delete_document(document_id)
         
         logger.info("Knowledge document deleted successfully", document_id=document_id)
         return result
@@ -200,7 +205,7 @@ async def search_knowledge(
     try:
         logger.info("Searching knowledge base", query=query, user_id=current_user["uid"])
         
-        results = await rag_service.search_similar(query, limit)
+        results = await get_rag_service().search_similar(query, limit)
         
         logger.info("Knowledge search completed", results_count=len(results))
         return {"results": results}
@@ -227,7 +232,7 @@ async def get_knowledge_stats(
         
         logger.info("Getting knowledge base stats", user_id=current_user["uid"])
         
-        stats = await rag_service.get_knowledge_stats()
+        stats = await get_rag_service().get_knowledge_stats()
         
         return stats
         

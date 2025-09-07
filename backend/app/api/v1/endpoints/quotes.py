@@ -13,7 +13,7 @@ from app.models.quote import (
     QuoteSearchParams, QuoteAcceptance
 )
 from app.models.order import RepairService
-from app.services.quote_service import quote_service
+from app.services.quote_service import get_quote_service
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -30,7 +30,7 @@ async def create_quote(
     try:
         logger.info("Creating quote", user_id=current_user["uid"], phone_model=quote_request.phone_model)
         
-        quote = await quote_service.create_quote(quote_request, current_user["uid"])
+        quote = await get_quote_service().create_quote(quote_request, current_user["uid"])
         
         logger.info("Quote created successfully", quote_id=quote.id)
         return quote
@@ -55,7 +55,7 @@ async def calculate_quote(
         logger.info("Calculating quote", user_id=current_user["uid"], phone_model=quote_request.phone_model)
         
         # Create and return quote (this will calculate but not save)
-        quote = await quote_service.create_quote(quote_request, current_user["uid"])
+        quote = await get_quote_service().create_quote(quote_request, current_user["uid"])
         
         logger.info("Quote calculated successfully", quote_id=quote.id)
         return quote
@@ -79,7 +79,7 @@ async def get_quotes(
     try:
         logger.info("Getting quotes", user_id=current_user["uid"], params=search_params.dict())
         
-        quotes = await quote_service.get_quotes(current_user["uid"], search_params)
+        quotes = await get_quote_service().get_quotes(current_user["uid"], search_params)
         
         return quotes
         
@@ -99,7 +99,7 @@ async def get_quote(
     try:
         logger.info("Getting quote", quote_id=quote_id, user_id=current_user["uid"])
         
-        quote = await quote_service.get_quote(quote_id, current_user["uid"])
+        quote = await get_quote_service().get_quote(quote_id, current_user["uid"])
         
         return quote
         
@@ -126,7 +126,7 @@ async def update_quote(
     try:
         logger.info("Updating quote", quote_id=quote_id, user_id=current_user["uid"])
         
-        quote = await quote_service.update_quote(quote_id, update_data, current_user["uid"])
+        quote = await get_quote_service().update_quote(quote_id, update_data, current_user["uid"])
         
         logger.info("Quote updated successfully", quote_id=quote_id)
         return quote
@@ -154,7 +154,7 @@ async def accept_quote(
     try:
         logger.info("Accepting quote", quote_id=quote_id, user_id=current_user["uid"])
         
-        quote = await quote_service.accept_quote(quote_id, current_user["uid"])
+        quote = await get_quote_service().accept_quote(quote_id, current_user["uid"])
         
         logger.info("Quote accepted successfully", quote_id=quote_id)
         return quote
@@ -181,7 +181,7 @@ async def reject_quote(
     try:
         logger.info("Rejecting quote", quote_id=quote_id, user_id=current_user["uid"])
         
-        quote = await quote_service.reject_quote(quote_id, current_user["uid"])
+        quote = await get_quote_service().reject_quote(quote_id, current_user["uid"])
         
         logger.info("Quote rejected successfully", quote_id=quote_id)
         return quote
@@ -205,7 +205,7 @@ async def get_available_services():
     try:
         logger.info("Getting available services")
         
-        services = await quote_service.get_available_services()
+        services = await get_quote_service().get_available_services()
         
         return services
         

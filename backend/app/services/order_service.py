@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import structlog
 import uuid
 
-from app.core.firebase import get_firestore_client
+from app.core.supabase import get_supabase_client
 from app.core.exceptions import NotFoundError, ValidationError, DatabaseError
 from app.models.order import (
     OrderCreate, OrderUpdate, OrderResponse, OrderListResponse,
@@ -21,8 +21,8 @@ class OrderService:
     """Service for managing repair orders"""
     
     def __init__(self):
-        self.db = get_firestore_client()
-        self.collection = "orders"
+        self.client = get_supabase_client()
+        self.table = "orders"
     
     async def create_order(self, order_data: OrderCreate, user_id: str) -> OrderResponse:
         """
@@ -50,25 +50,34 @@ class OrderService:
                 "services": [service.dict() for service in order_data.services],
                 "status": RepairStatus.RECEIVED,
                 "total_price": total_price,
-                "estimated_completion": estimated_completion,
+                "estimated_completion": estimated_completion.isoformat(),
                 "notes": order_data.notes,
                 "customer_address": order_data.customer_address.dict() if order_data.customer_address else None,
                 "tracking_id": tracking_id,
-                "created_at": datetime.now(),
-                "updated_at": datetime.now(),
-                "status_history": [{
-                    "status": RepairStatus.RECEIVED,
-                    "timestamp": datetime.now(),
-                    "notes": "Order received"
-                }]
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat()
             }
             
-            # Save to Firestore
-            self.db.collection(self.collection).document(order_id).set(order_doc)
+            # Save to Supabase
+            response = self.client.table(self.table).insert(order_doc).execute()
+            
+            if not response.data:
+                raise DatabaseError("create", "Failed to create order")
+            
+            # Create status history entry
+            status_history_data = {
+                "order_id": order_id,
+                "status": RepairStatus.RECEIVED,
+                "notes": "Order received",
+                "created_at": datetime.now().isoformat(),
+                "created_by": user_id
+            }
+            
+            self.client.table("order_status_history").insert(status_history_data).execute()
             
             # Get customer data
-            customer_doc = self.db.collection("users").document(user_id).get()
-            customer_data = customer_doc.to_dict() if customer_doc.exists else {}
+            customer_response = self.client.table("profiles").select("*").eq("id", user_id).execute()
+            customer_data = customer_response.data[0] if customer_response.data else {}
             
             logger.info("Order created successfully", order_id=order_id, tracking_id=tracking_id)
             
@@ -98,20 +107,20 @@ class OrderService:
         Get a specific order by ID
         """
         try:
-            order_doc = self.db.collection(self.collection).document(order_id).get()
+            response = self.client.table(self.table).select("*").eq("id", order_id).execute()
             
-            if not order_doc.exists:
+            if not response.data:
                 raise NotFoundError("Order", order_id)
             
-            order_data = order_doc.to_dict()
+            order_data = response.data[0]
             
             # Check if user has access to this order
             if order_data["customer_id"] != user_id:
                 raise ValidationError("Access denied to this order")
             
             # Get customer data
-            customer_doc = self.db.collection("users").document(user_id).get()
-            customer_data = customer_doc.to_dict() if customer_doc.exists else {}
+            customer_response = self.client.table("profiles").select("*").eq("id", user_id).execute()
+            customer_data = customer_response.data[0] if customer_response.data else {}
             
             return OrderResponse(**order_data, customer=customer_data)
             
@@ -133,49 +142,44 @@ class OrderService:
         """
         try:
             # Build query
-            query = self.db.collection(self.collection).where("customer_id", "==", user_id)
+            query = self.client.table(self.table).select("*").eq("customer_id", user_id)
             
             # Apply filters
             if search_params.status:
-                query = query.where("status", "==", search_params.status)
+                query = query.eq("status", search_params.status)
             
             if search_params.phone_model:
-                query = query.where("phone_model", "==", search_params.phone_model)
+                query = query.eq("phone_model", search_params.phone_model)
             
             if search_params.date_from:
-                query = query.where("created_at", ">=", search_params.date_from)
+                query = query.gte("created_at", search_params.date_from.isoformat())
             
             if search_params.date_to:
-                query = query.where("created_at", "<=", search_params.date_to)
+                query = query.lte("created_at", search_params.date_to.isoformat())
             
             # Apply sorting
             sort_field = search_params.sort_by
-            if search_params.sort_order == "desc":
-                query = query.order_by(sort_field, direction="DESCENDING")
-            else:
-                query = query.order_by(sort_field, direction="ASCENDING")
+            sort_order = search_params.sort_order
+            query = query.order(sort_field, desc=(sort_order == "desc"))
             
             # Apply pagination
             offset = (search_params.page - 1) * search_params.limit
-            query = query.offset(offset).limit(search_params.limit)
+            query = query.range(offset, offset + search_params.limit - 1)
             
             # Execute query
-            docs = query.stream()
+            response = query.execute()
             
             orders = []
-            for doc in docs:
-                order_data = doc.to_dict()
-                
+            for order_data in response.data or []:
                 # Get customer data
-                customer_doc = self.db.collection("users").document(user_id).get()
-                customer_data = customer_doc.to_dict() if customer_doc.exists else {}
+                customer_response = self.client.table("profiles").select("*").eq("id", user_id).execute()
+                customer_data = customer_response.data[0] if customer_response.data else {}
                 
                 orders.append(OrderResponse(**order_data, customer=customer_data))
             
-            # Get total count (simplified - in production, use a separate counter)
-            total_query = self.db.collection(self.collection).where("customer_id", "==", user_id)
-            total_docs = total_query.stream()
-            total = sum(1 for _ in total_docs)
+            # Get total count
+            count_response = self.client.table(self.table).select("*", count="exact").eq("customer_id", user_id).execute()
+            total = count_response.count or 0
             
             has_next = (search_params.page * search_params.limit) < total
             has_prev = search_params.page > 1
@@ -204,12 +208,12 @@ class OrderService:
         """
         try:
             # Get existing order
-            order_doc = self.db.collection(self.collection).document(order_id).get()
+            response = self.client.table(self.table).select("*").eq("id", order_id).execute()
             
-            if not order_doc.exists:
+            if not response.data:
                 raise NotFoundError("Order", order_id)
             
-            order_data = order_doc.to_dict()
+            order_data = response.data[0]
             
             # Check if user has access to this order
             if order_data["customer_id"] != user_id:
@@ -217,25 +221,26 @@ class OrderService:
             
             # Prepare update data
             update_dict = {
-                "updated_at": datetime.now()
+                "updated_at": datetime.now().isoformat()
             }
             
             if update_data.status:
                 update_dict["status"] = update_data.status
                 # Add to status history
-                status_history = order_data.get("status_history", [])
-                status_history.append({
+                status_history_data = {
+                    "order_id": order_id,
                     "status": update_data.status,
-                    "timestamp": datetime.now(),
-                    "notes": update_data.notes or f"Status updated to {update_data.status}"
-                })
-                update_dict["status_history"] = status_history
+                    "notes": update_data.notes or f"Status updated to {update_data.status}",
+                    "created_at": datetime.now().isoformat(),
+                    "created_by": user_id
+                }
+                self.client.table("order_status_history").insert(status_history_data).execute()
             
             if update_data.notes:
                 update_dict["notes"] = update_data.notes
             
             if update_data.estimated_completion:
-                update_dict["estimated_completion"] = update_data.estimated_completion
+                update_dict["estimated_completion"] = update_data.estimated_completion.isoformat()
             
             if update_data.services:
                 update_dict["services"] = [service.dict() for service in update_data.services]
@@ -244,7 +249,10 @@ class OrderService:
                 update_dict["total_price"] = total_price
             
             # Update document
-            self.db.collection(self.collection).document(order_id).update(update_dict)
+            update_response = self.client.table(self.table).update(update_dict).eq("id", order_id).execute()
+            
+            if not update_response.data:
+                raise DatabaseError("update", "Failed to update order")
             
             # Get updated order
             updated_order = await self.get_order(order_id, user_id)
@@ -267,12 +275,12 @@ class OrderService:
         """
         try:
             # Get existing order
-            order_doc = self.db.collection(self.collection).document(order_id).get()
+            response = self.client.table(self.table).select("*").eq("id", order_id).execute()
             
-            if not order_doc.exists:
+            if not response.data:
                 raise NotFoundError("Order", order_id)
             
-            order_data = order_doc.to_dict()
+            order_data = response.data[0]
             
             # Check if user has access to this order
             if order_data["customer_id"] != user_id:
@@ -304,24 +312,22 @@ class OrderService:
         """
         try:
             # Find order by tracking ID
-            query = self.db.collection(self.collection).where("tracking_id", "==", tracking_id)
-            docs = query.stream()
+            response = self.client.table(self.table).select("*").eq("tracking_id", tracking_id).execute()
             
-            order_doc = None
-            for doc in docs:
-                order_doc = doc
-                break
-            
-            if not order_doc:
+            if not response.data:
                 raise NotFoundError("Order", tracking_id)
             
-            order_data = order_doc.to_dict()
+            order_data = response.data[0]
+            
+            # Get status history
+            history_response = self.client.table("order_status_history").select("*").eq("order_id", order_data["id"]).order("created_at", desc=False).execute()
+            status_history = history_response.data or []
             
             return OrderTracking(
                 order_id=order_data["id"],
                 tracking_id=tracking_id,
                 status=order_data["status"],
-                status_history=order_data.get("status_history", []),
+                status_history=status_history,
                 estimated_completion=order_data["estimated_completion"],
                 current_location=self._get_current_location(order_data["status"]),
                 last_updated=order_data["updated_at"]
@@ -350,7 +356,14 @@ class OrderService:
         return location_map.get(status)
 
 
-# Global order service instance
-order_service = OrderService()
+# Global order service instance (lazy initialization)
+order_service = None
+
+def get_order_service():
+    """Get order service instance with lazy initialization"""
+    global order_service
+    if order_service is None:
+        order_service = OrderService()
+    return order_service
 
 

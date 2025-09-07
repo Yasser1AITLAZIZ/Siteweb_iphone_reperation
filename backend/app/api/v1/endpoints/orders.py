@@ -12,7 +12,7 @@ from app.models.order import (
     OrderCreate, OrderUpdate, OrderResponse, OrderListResponse,
     OrderSearchParams, OrderTracking, OrderStatusUpdate
 )
-from app.services.order_service import order_service
+from app.services.order_service import get_order_service
 
 logger = structlog.get_logger()
 router = APIRouter()
@@ -29,7 +29,7 @@ async def create_order(
     try:
         logger.info("Creating order", user_id=current_user["uid"])
         
-        order = await order_service.create_order(order_data, current_user["uid"])
+        order = await get_order_service().create_order(order_data, current_user["uid"])
         
         logger.info("Order created successfully", order_id=order.id)
         return order
@@ -53,7 +53,7 @@ async def get_orders(
     try:
         logger.info("Getting orders", user_id=current_user["uid"], params=search_params.dict())
         
-        orders = await order_service.get_orders(current_user["uid"], search_params)
+        orders = await get_order_service().get_orders(current_user["uid"], search_params)
         
         return orders
         
@@ -73,7 +73,7 @@ async def get_order(
     try:
         logger.info("Getting order", order_id=order_id, user_id=current_user["uid"])
         
-        order = await order_service.get_order(order_id, current_user["uid"])
+        order = await get_order_service().get_order(order_id, current_user["uid"])
         
         return order
         
@@ -100,7 +100,7 @@ async def update_order(
     try:
         logger.info("Updating order", order_id=order_id, user_id=current_user["uid"])
         
-        order = await order_service.update_order(order_id, update_data, current_user["uid"])
+        order = await get_order_service().update_order(order_id, update_data, current_user["uid"])
         
         logger.info("Order updated successfully", order_id=order_id)
         return order
@@ -127,7 +127,7 @@ async def delete_order(
     try:
         logger.info("Deleting order", order_id=order_id, user_id=current_user["uid"])
         
-        await order_service.delete_order(order_id, current_user["uid"])
+        await get_order_service().delete_order(order_id, current_user["uid"])
         
         logger.info("Order deleted successfully", order_id=order_id)
         
@@ -150,7 +150,7 @@ async def track_order(tracking_id: str):
     try:
         logger.info("Tracking order", tracking_id=tracking_id)
         
-        tracking = await order_service.track_order(tracking_id)
+        tracking = await get_order_service().track_order(tracking_id)
         
         return tracking
         
@@ -180,7 +180,7 @@ async def update_order_status(
             estimated_completion=status_update.estimated_completion
         )
         
-        order = await order_service.update_order(order_id, update_data, current_user["uid"])
+        order = await get_order_service().update_order(order_id, update_data, current_user["uid"])
         
         logger.info("Order status updated successfully", order_id=order_id)
         return order

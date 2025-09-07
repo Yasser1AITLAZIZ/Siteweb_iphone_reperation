@@ -6,6 +6,10 @@ from pydantic_settings import BaseSettings
 from typing import List, Optional
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class Settings(BaseSettings):
@@ -30,24 +34,13 @@ class Settings(BaseSettings):
         "https://irepair-pro.vercel.app"
     ]
     
-    # Firebase
-    FIREBASE_PROJECT_ID: str = "irepair-pro"
-    FIREBASE_PRIVATE_KEY_ID: Optional[str] = None
-    FIREBASE_PRIVATE_KEY: Optional[str] = None
-    FIREBASE_CLIENT_EMAIL: Optional[str] = None
-    FIREBASE_CLIENT_ID: Optional[str] = None
-    FIREBASE_AUTH_URI: str = "https://accounts.google.com/o/oauth2/auth"
-    FIREBASE_TOKEN_URI: str = "https://oauth2.googleapis.com/token"
-    FIREBASE_AUTH_PROVIDER_X509_CERT_URL: str = "https://www.googleapis.com/oauth2/v1/certs"
-    FIREBASE_CLIENT_X509_CERT_URL: Optional[str] = None
+    # Supabase
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
     
-    # OpenAI
-    OPENAI_API_KEY: str = ""
-    
-    # Pinecone (Vector Database)
-    PINECONE_API_KEY: str = ""
-    PINECONE_ENVIRONMENT: str = "us-west1-gcp"
-    PINECONE_INDEX_NAME: str = "irepair-knowledge"
+    # Gemini
+    GEMINI_API_KEY: str = ""
     
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://user:password@localhost/irepair_pro"
@@ -67,9 +60,79 @@ class Settings(BaseSettings):
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     UPLOAD_DIR: str = "uploads"
     
+    # API Configuration
+    ENABLE_DOCS: bool = True
+    ENABLE_REDOC: bool = True
+    API_VERSION: str = "v1"
+    API_PREFIX: str = "/api/v1"
+    
+    # Logging
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "json"
+    
+    # CORS
+    ENABLE_CORS: bool = True
+    ENABLE_HTTPS_REDIRECT: bool = False
+    
+    # Health Check
+    HEALTH_CHECK_ENDPOINT: str = "/health"
+    HEALTH_CHECK_INTERVAL: int = 30
+    
+    # Vector Search (RAG)
+    VECTOR_DIMENSION: int = 768
+    VECTOR_SIMILARITY_THRESHOLD: float = 0.7
+    MAX_SIMILARITY_RESULTS: int = 5
+    
+    # Order Management
+    DEFAULT_ORDER_STATUS: str = "recu"
+    ORDER_EXPIRY_DAYS: int = 30
+    TRACKING_ID_PREFIX: str = "IRP"
+    
+    # Quote System
+    QUOTE_EXPIRY_HOURS: int = 24
+    DEFAULT_QUOTE_STATUS: str = "pending"
+    
+    # Email Configuration
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = "your-email@gmail.com"
+    SMTP_PASSWORD: str = "your-app-password"
+    SMTP_USE_TLS: bool = True
+    
+    # Payment (Stripe)
+    STRIPE_PUBLIC_KEY: str = "pk_test_your-stripe-public-key"
+    STRIPE_SECRET_KEY: str = "sk_test_your-stripe-secret-key"
+    STRIPE_WEBHOOK_SECRET: str = "whsec_your-webhook-secret"
+    
+    # Analytics
+    GA_TRACKING_ID: str = "G-XXXXXXXXXX"
+    
+    # Backup
+    BACKUP_ENABLED: bool = False
+    BACKUP_SCHEDULE: str = "0 2 * * *"
+    BACKUP_RETENTION_DAYS: int = 30
+    
+    # Database Pool
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+    DB_POOL_TIMEOUT: int = 30
+    
+    # Worker Configuration
+    WORKER_PROCESSES: int = 4
+    WORKER_CONNECTIONS: int = 1000
+    
+    # Feature Flags
+    ENABLE_CHATBOT: bool = True
+    ENABLE_ORDER_TRACKING: bool = True
+    ENABLE_QUOTE_SYSTEM: bool = True
+    ENABLE_ADMIN_PANEL: bool = True
+    ENABLE_ANALYTICS: bool = False
+    ENABLE_NOTIFICATIONS: bool = False
+    
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "allow"  # Allow extra fields from environment
 
 
 # Create settings instance

@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 import structlog
 
-from app.core.firebase import get_firestore_client, get_auth_client
+from app.core.supabase import get_supabase_client
 from app.core.exceptions import NotFoundError, ValidationError, DatabaseError
 from app.models.user import UserResponse, UserUpdate, UserProfile
 
@@ -17,22 +17,21 @@ class UserService:
     """Service for managing user profiles"""
     
     def __init__(self):
-        self.db = get_firestore_client()
-        self.auth = get_auth_client()
-        self.collection = "users"
+        self.client = get_supabase_client()
+        self.table = "profiles"
     
     async def get_user_profile(self, user_id: str) -> UserProfile:
         """
         Get user profile with extended information
         """
         try:
-            # Get user document
-            user_doc = self.db.collection(self.collection).document(user_id).get()
+            # Get user profile from Supabase
+            response = self.client.table(self.table).select("*").eq("id", user_id).execute()
             
-            if not user_doc.exists:
+            if not response.data:
                 raise NotFoundError("User", user_id)
             
-            user_data = user_doc.to_dict()
+            user_data = response.data[0]
             
             # Get user statistics
             stats = await self._get_user_statistics(user_id)
@@ -60,15 +59,15 @@ class UserService:
         Update user profile
         """
         try:
-            # Get existing user
-            user_doc = self.db.collection(self.collection).document(user_id).get()
+            # Check if user exists
+            existing_response = self.client.table(self.table).select("id").eq("id", user_id).execute()
             
-            if not user_doc.exists:
+            if not existing_response.data:
                 raise NotFoundError("User", user_id)
             
             # Prepare update data
             update_dict = {
-                "updated_at": datetime.now()
+                "updated_at": datetime.now().isoformat()
             }
             
             if update_data.name:
@@ -84,7 +83,10 @@ class UserService:
                 update_dict["status"] = update_data.status
             
             # Update document
-            self.db.collection(self.collection).document(user_id).update(update_dict)
+            response = self.client.table(self.table).update(update_dict).eq("id", user_id).execute()
+            
+            if not response.data:
+                raise NotFoundError("User", user_id)
             
             # Get updated user
             updated_user = await self.get_user_profile(user_id)
@@ -106,7 +108,7 @@ class UserService:
         try:
             # Prepare user document
             user_doc = {
-                "uid": user_id,
+                "id": user_id,
                 "name": user_data.get("name", ""),
                 "email": user_data.get("email", ""),
                 "phone": user_data.get("phone", ""),
@@ -115,12 +117,15 @@ class UserService:
                 "address": user_data.get("address"),
                 "permissions": user_data.get("permissions", []),
                 "preferences": user_data.get("preferences", {}),
-                "created_at": datetime.now(),
-                "updated_at": datetime.now()
+                "created_at": datetime.now().isoformat(),
+                "updated_at": datetime.now().isoformat()
             }
             
-            # Save to Firestore
-            self.db.collection(self.collection).document(user_id).set(user_doc)
+            # Save to Supabase
+            response = self.client.table(self.table).insert(user_doc).execute()
+            
+            if not response.data:
+                raise DatabaseError("create_profile", "Failed to create user profile")
             
             logger.info("User profile created successfully", user_id=user_id)
             
@@ -135,10 +140,10 @@ class UserService:
         Delete user profile (soft delete)
         """
         try:
-            # Get existing user
-            user_doc = self.db.collection(self.collection).document(user_id).get()
+            # Check if user exists
+            existing_response = self.client.table(self.table).select("id").eq("id", user_id).execute()
             
-            if not user_doc.exists:
+            if not existing_response.data:
                 raise NotFoundError("User", user_id)
             
             # Soft delete by setting status to inactive
@@ -160,12 +165,11 @@ class UserService:
         Get user by email address
         """
         try:
-            query = self.db.collection(self.collection).where("email", "==", email)
-            docs = query.stream()
+            response = self.client.table(self.table).select("*").eq("email", email).execute()
             
-            for doc in docs:
-                user_data = doc.to_dict()
-                user_data["uid"] = doc.id
+            if response.data:
+                user_data = response.data[0]
+                user_data["uid"] = user_data["id"]
                 return UserResponse(**user_data)
             
             return None
@@ -179,17 +183,20 @@ class UserService:
         Update user preferences
         """
         try:
-            # Get existing user
-            user_doc = self.db.collection(self.collection).document(user_id).get()
+            # Check if user exists
+            existing_response = self.client.table(self.table).select("id").eq("id", user_id).execute()
             
-            if not user_doc.exists:
+            if not existing_response.data:
                 raise NotFoundError("User", user_id)
             
             # Update preferences
-            self.db.collection(self.collection).document(user_id).update({
+            response = self.client.table(self.table).update({
                 "preferences": preferences,
-                "updated_at": datetime.now()
-            })
+                "updated_at": datetime.now().isoformat()
+            }).eq("id", user_id).execute()
+            
+            if not response.data:
+                raise NotFoundError("User", user_id)
             
             # Get updated user
             updated_user = await self.get_user_profile(user_id)
@@ -210,16 +217,10 @@ class UserService:
         """
         try:
             # Get user orders
-            orders_query = self.db.collection("orders").where("customer_id", "==", user_id)
-            orders_docs = orders_query.stream()
+            orders_response = self.client.table("orders").select("total_price").eq("customer_id", user_id).execute()
             
-            total_orders = 0
-            total_spent = 0.0
-            
-            for doc in orders_docs:
-                order_data = doc.to_dict()
-                total_orders += 1
-                total_spent += order_data.get("total_price", 0)
+            total_orders = len(orders_response.data) if orders_response.data else 0
+            total_spent = sum(order.get("total_price", 0) for order in orders_response.data) if orders_response.data else 0.0
             
             return {
                 "total_orders": total_orders,
@@ -242,28 +243,24 @@ class UserService:
         Search users by name or email
         """
         try:
-            # Simple search implementation
-            # In production, consider using Algolia or Elasticsearch
+            # Simple search implementation using Supabase
+            # In production, consider using full-text search or external search service
             
             users = []
             
-            # Search by name
-            name_query = self.db.collection(self.collection).where("name", ">=", query).where("name", "<=", query + "\uf8ff")
-            name_docs = name_query.limit(limit).stream()
+            # Search by name using ilike for case-insensitive search
+            name_response = self.client.table(self.table).select("*").ilike("name", f"%{query}%").limit(limit).execute()
             
-            for doc in name_docs:
-                user_data = doc.to_dict()
-                user_data["uid"] = doc.id
+            for user_data in name_response.data or []:
+                user_data["uid"] = user_data["id"]
                 users.append(UserResponse(**user_data))
             
             # Search by email if we haven't reached the limit
             if len(users) < limit:
-                email_query = self.db.collection(self.collection).where("email", ">=", query).where("email", "<=", query + "\uf8ff")
-                email_docs = email_query.limit(limit - len(users)).stream()
+                email_response = self.client.table(self.table).select("*").ilike("email", f"%{query}%").limit(limit - len(users)).execute()
                 
-                for doc in email_docs:
-                    user_data = doc.to_dict()
-                    user_data["uid"] = doc.id
+                for user_data in email_response.data or []:
+                    user_data["uid"] = user_data["id"]
                     users.append(UserResponse(**user_data))
             
             return users
@@ -273,7 +270,14 @@ class UserService:
             raise DatabaseError("search_users", str(e))
 
 
-# Global user service instance
-user_service = UserService()
+# Global user service instance (lazy initialization)
+user_service = None
+
+def get_user_service():
+    """Get user service instance with lazy initialization"""
+    global user_service
+    if user_service is None:
+        user_service = UserService()
+    return user_service
 
 

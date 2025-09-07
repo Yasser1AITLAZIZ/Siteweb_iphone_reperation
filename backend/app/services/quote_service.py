@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import structlog
 import uuid
 
-from app.core.firebase import get_firestore_client
+from app.core.supabase import get_supabase_client
 from app.core.exceptions import NotFoundError, ValidationError, DatabaseError
 from app.models.quote import (
     QuoteRequest, QuoteResponse, QuoteListResponse, QuoteUpdate,
@@ -22,9 +22,9 @@ class QuoteService:
     """Service for managing repair quotes"""
     
     def __init__(self):
-        self.db = get_firestore_client()
-        self.collection = "quotes"
-        self.services_collection = "services"
+        self.client = get_supabase_client()
+        self.table = "quotes"
+        self.services_table = "repair_services"
     
     async def create_quote(self, quote_request: QuoteRequest, user_id: str) -> QuoteResponse:
         """
@@ -275,16 +275,17 @@ class QuoteService:
         """
         Get services by their IDs
         """
-        services = []
-        
-        for service_id in service_ids:
-            service_doc = self.db.collection(self.services_collection).document(service_id).get()
+        try:
+            response = self.client.table(self.services_table).select("*").in_("id", service_ids).execute()
             
-            if service_doc.exists:
-                service_data = service_doc.to_dict()
+            services = []
+            for service_data in response.data or []:
                 services.append(RepairService(**service_data))
-        
-        return services
+            
+            return services
+        except Exception as e:
+            logger.error("Failed to get services by IDs", error=str(e))
+            raise DatabaseError("get_services", str(e))
     
     async def _calculate_quote(
         self, 
@@ -360,13 +361,43 @@ class QuoteService:
         Get all available repair services
         """
         try:
-            query = self.db.collection(self.services_collection).where("is_available", "==", True)
-            docs = query.stream()
+            if self.client is None:
+                logger.warning("Supabase client not available, returning mock services")
+                # Return mock services for development
+                return [
+                    RepairService(
+                        id="screen_repair",
+                        name="Screen Repair",
+                        description="Complete screen replacement",
+                        price=299.99,
+                        estimated_time=60,
+                        category=ServiceCategory.SCREEN,
+                        is_available=True
+                    ),
+                    RepairService(
+                        id="battery_replacement",
+                        name="Battery Replacement",
+                        description="Battery replacement service",
+                        price=89.99,
+                        estimated_time=30,
+                        category=ServiceCategory.BATTERY,
+                        is_available=True
+                    ),
+                    RepairService(
+                        id="camera_repair",
+                        name="Camera Repair",
+                        description="Camera module replacement",
+                        price=199.99,
+                        estimated_time=45,
+                        category=ServiceCategory.CAMERA,
+                        is_available=True
+                    )
+                ]
+            
+            response = self.client.table(self.services_table).select("*").eq("is_available", True).execute()
             
             services = []
-            for doc in docs:
-                service_data = doc.to_dict()
-                service_data["id"] = doc.id
+            for service_data in response.data or []:
                 services.append(RepairService(**service_data))
             
             return services
@@ -376,7 +407,14 @@ class QuoteService:
             raise DatabaseError("list_services", str(e))
 
 
-# Global quote service instance
-quote_service = QuoteService()
+# Global quote service instance (lazy initialization)
+quote_service = None
+
+def get_quote_service():
+    """Get quote service instance with lazy initialization"""
+    global quote_service
+    if quote_service is None:
+        quote_service = QuoteService()
+    return quote_service
 
 

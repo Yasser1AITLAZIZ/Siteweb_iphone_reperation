@@ -6,7 +6,7 @@ from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 import structlog
-from app.core.firebase import verify_firebase_token, get_user_by_uid
+from app.core.supabase import verify_supabase_token, get_user_by_uid
 
 logger = structlog.get_logger()
 
@@ -18,13 +18,13 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> dict:
     """
-    Get current authenticated user from Firebase token
+    Get current authenticated user from Supabase token
     """
     try:
-        # Verify Firebase token
-        token_data = await verify_firebase_token(credentials.credentials)
+        # Verify Supabase token
+        token_data = await verify_supabase_token(credentials.credentials)
         
-        # Get user profile from Firestore
+        # Get user profile from Supabase
         user_data = await get_user_by_uid(token_data["uid"])
         
         return user_data

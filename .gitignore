@@ -60,7 +60,7 @@ out/
 .env.development.local
 .env.test.local
 .env.production.local
-.env
+.env*
 # Testing
 coverage/
 .nyc_output/
@@ -85,3 +85,6 @@ bun.lockb
 
 # Env
 /venv/
+
+# no caches
+__pycache__/

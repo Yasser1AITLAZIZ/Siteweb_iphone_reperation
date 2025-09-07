@@ -12,7 +12,7 @@ import time
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
-from app.core.firebase import initialize_firebase
+from app.core.supabase import initialize_supabase
 from app.api.v1.api import api_router
 from app.core.exceptions import CustomException
 
@@ -44,12 +44,12 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting iRepair Pro Backend API")
     
-    # Initialize Firebase
+    # Initialize Supabase
     try:
-        initialize_firebase()
-        logger.info("Firebase initialized successfully")
+        initialize_supabase()
+        logger.info("Supabase initialized successfully")
     except Exception as e:
-        logger.error("Failed to initialize Firebase", error=str(e))
+        logger.error("Failed to initialize Supabase", error=str(e))
         raise
     
     yield

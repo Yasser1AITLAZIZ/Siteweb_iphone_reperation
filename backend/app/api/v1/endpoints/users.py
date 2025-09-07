@@ -12,10 +12,18 @@ from app.models.user import (
     UserResponse, UserUpdate, UserProfile, LoginRequest, LoginResponse,
     PasswordResetRequest, PasswordResetConfirm
 )
-from app.services.user_service import user_service
+from app.services.user_service import get_user_service
 
 logger = structlog.get_logger()
 router = APIRouter()
+
+
+@router.get("/health")
+async def users_health():
+    """
+    Users service health check
+    """
+    return {"status": "healthy", "service": "users"}
 
 
 @router.get("/profile", response_model=UserProfile)
@@ -28,7 +36,7 @@ async def get_user_profile(
     try:
         logger.info("Getting user profile", user_id=current_user["uid"])
         
-        profile = await user_service.get_user_profile(current_user["uid"])
+        profile = await get_user_service().get_user_profile(current_user["uid"])
         
         return profile
         
@@ -51,7 +59,7 @@ async def update_user_profile(
     try:
         logger.info("Updating user profile", user_id=current_user["uid"])
         
-        profile = await user_service.update_user_profile(current_user["uid"], update_data)
+        profile = await get_user_service().update_user_profile(current_user["uid"], update_data)
         
         logger.info("User profile updated successfully", user_id=current_user["uid"])
         return profile
@@ -78,7 +86,7 @@ async def update_user_preferences(
     try:
         logger.info("Updating user preferences", user_id=current_user["uid"])
         
-        profile = await user_service.update_user_preferences(current_user["uid"], preferences)
+        profile = await get_user_service().update_user_preferences(current_user["uid"], preferences)
         
         logger.info("User preferences updated successfully", user_id=current_user["uid"])
         return profile
@@ -103,7 +111,7 @@ async def search_users(
     try:
         logger.info("Searching users", query=query, admin_id=current_user["uid"])
         
-        users = await user_service.search_users(query, limit)
+        users = await get_user_service().search_users(query, limit)
         
         return users
         
@@ -122,7 +130,7 @@ async def delete_user_profile(
     try:
         logger.info("Deleting user profile", user_id=current_user["uid"])
         
-        await user_service.delete_user_profile(current_user["uid"])
+        await get_user_service().delete_user_profile(current_user["uid"])
         
         logger.info("User profile deleted successfully", user_id=current_user["uid"])
         
@@ -145,7 +153,7 @@ async def get_user_by_id(
     try:
         logger.info("Getting user by ID", user_id=user_id, admin_id=current_user["uid"])
         
-        profile = await user_service.get_user_profile(user_id)
+        profile = await get_user_service().get_user_profile(user_id)
         
         return profile
         
@@ -169,7 +177,7 @@ async def update_user_by_id(
     try:
         logger.info("Updating user by ID", user_id=user_id, admin_id=current_user["uid"])
         
-        profile = await user_service.update_user_profile(user_id, update_data)
+        profile = await get_user_service().update_user_profile(user_id, update_data)
         
         logger.info("User updated successfully by admin", user_id=user_id)
         return profile
@@ -196,7 +204,7 @@ async def delete_user_by_id(
     try:
         logger.info("Deleting user by ID", user_id=user_id, admin_id=current_user["uid"])
         
-        await user_service.delete_user_profile(user_id)
+        await get_user_service().delete_user_profile(user_id)
         
         logger.info("User deleted successfully by admin", user_id=user_id)
         
